@@ -290,10 +290,42 @@ fn df_experiment(func_ptr: u64, resource_ptr: u64, _ref: rustler::Term) -> Resul
     if stream_ptr.is_null() {
         Err(ExplorerError::Other("error during donation".into()))
     } else {
-        let stream_box = unsafe { Box::from_raw(stream_ptr) };
+        let stream_copy = unsafe { std::ptr::read(stream_ptr) };
+        let mut stream_copy: ArrowArrayStreamStruct = unsafe { std::mem::transmute(stream_copy) };
+        stream_copy.release = Some(no_op_release);
+        let stream_copy: ffi::ArrowArrayStream = unsafe { std::mem::transmute(stream_copy) };
+        let stream_box = Box::new(stream_copy);
         unsafe { ffi::ArrowArrayStreamReader::try_new(stream_box) };
         Ok("123".to_string())
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn no_op_release(_arg1: *mut ffi::ArrowArrayStream) {
+    // Do nothing :-)
+}
+
+
+#[repr(C)]
+#[derive(Debug)]
+pub struct ArrowArrayStreamStruct {
+    pub(super) get_schema: ::std::option::Option<
+        unsafe extern "C" fn(
+            arg1: *mut ffi::ArrowArrayStream,
+            out: *mut ffi::ArrowSchema,
+        ) -> ::std::os::raw::c_int,
+        >,
+    pub(super) get_next: ::std::option::Option<
+        unsafe extern "C" fn(
+            arg1: *mut ffi::ArrowArrayStream,
+            out: *mut ffi::ArrowArray,
+        ) -> ::std::os::raw::c_int,
+        >,
+    pub(super) get_last_error: ::std::option::Option<
+        unsafe extern "C" fn(arg1: *mut ffi::ArrowArrayStream) -> *const ::std::os::raw::c_char,
+        >,
+    pub(super) release: ::std::option::Option<unsafe extern "C" fn(arg1: *mut ffi::ArrowArrayStream)>,
+    pub(super) private_data: *mut ::std::os::raw::c_void,
 }
 
 #[rustler::nif(schedule = "DirtyCpu")]
