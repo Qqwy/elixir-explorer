@@ -26,5 +26,8 @@ Statement.set_sql_query(statement, "SELECT * FROM foo")
 stream_ptr = Adbc.Nif.adbc_arrow_array_stream_get_pointer(stream.reference) |> IO.inspect
 resource_ptr = Adbc.Nif.adbc_arrow_array_stream_get_nif_resource_pointer(stream.reference) |> IO.inspect
 
-IO.inspect Explorer.PolarsBackend.Native.df_experiment(stream_ptr, resource_ptr, stream)
-IO.inspect Explorer.PolarsBackend.Native.df_experiment(stream_ptr, resource_ptr, stream)
+IO.inspect Explorer.PolarsBackend.Native.df_experiment(stream_ptr, stream)
+IO.inspect Explorer.PolarsBackend.Native.df_experiment(stream_ptr, stream)
+IO.inspect Explorer.PolarsBackend.Native.df_experiment(stream_ptr, stream)
+IO.inspect Explorer.PolarsBackend.Native.df_experiment(stream_ptr, stream)
+IO.inspect Explorer.PolarsBackend.Native.df_experiment(stream_ptr, stream)
