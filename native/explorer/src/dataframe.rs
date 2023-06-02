@@ -3,6 +3,7 @@ use polars_ops::pivot::{pivot_stable, PivotAgg};
 
 use std::collections::HashMap;
 use std::result::Result;
+use polars::export::arrow::ffi;
 
 use crate::ex_expr_to_exprs;
 use crate::{ExDataFrame, ExExpr, ExLazyFrame, ExSeries, ExplorerError};
@@ -279,6 +280,70 @@ pub fn df_sample_frac(
     };
 
     Ok(ExDataFrame::new(new_df))
+}
+
+#[rustler::nif]
+fn df_experiment(stream_ptr: u64, resource_ptr: u64, _ref: rustler::Term) -> Result<String, ExplorerError> {
+    // let ptr = func_ptr as *const ();
+    // let code: extern "C" fn(u64) -> *mut ffi::ArrowArrayStream = unsafe { std::mem::transmute(ptr) };
+    // let stream_ptr = (code)(resource_ptr);
+    println!("0");
+    let stream_ptr = stream_ptr as *mut ffi::ArrowArrayStream;
+    println!("1");
+    if stream_ptr.is_null() {
+        Err(ExplorerError::Other("error during donation".into()))
+    } else {
+        println!("2");
+        let stream_copy: ffi::ArrowArrayStream = unsafe { std::ptr::read(stream_ptr) };
+        dbg!(unsafe{&*stream_ptr});
+        dbg!(&stream_copy);
+        println!("3");
+        let mut stream_copy: ArrowArrayStreamStruct = unsafe { std::mem::transmute(stream_copy) };
+        println!("4");
+        stream_copy.release = Some(no_op_release);
+        println!("5");
+        let stream_copy: ffi::ArrowArrayStream = unsafe { std::mem::transmute(stream_copy) };
+        println!("6");
+        let stream_box = Box::new(stream_copy);
+        println!("7");
+        let mut res = unsafe { ffi::ArrowArrayStreamReader::try_new(stream_box) }.expect("Could not create an ArrowArrayStreamReader");
+        println!("8");
+        while let Some(Ok(val)) = unsafe { res.next() } {
+            println!("{:?}", val);
+        }
+        println!("8");
+        Ok("123".to_string())
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn no_op_release(_arg1: *mut ffi::ArrowArrayStream) {
+    // Do nothing :-)
+    //
+    println!("Do nothing");
+}
+
+
+#[repr(C)]
+#[derive(Debug)]
+pub struct ArrowArrayStreamStruct {
+    pub(super) get_schema: ::std::option::Option<
+        unsafe extern "C" fn(
+            arg1: *mut ffi::ArrowArrayStream,
+            out: *mut ffi::ArrowSchema,
+        ) -> ::std::os::raw::c_int,
+        >,
+    pub(super) get_next: ::std::option::Option<
+        unsafe extern "C" fn(
+            arg1: *mut ffi::ArrowArrayStream,
+            out: *mut ffi::ArrowArray,
+        ) -> ::std::os::raw::c_int,
+        >,
+    pub(super) get_last_error: ::std::option::Option<
+        unsafe extern "C" fn(arg1: *mut ffi::ArrowArrayStream) -> *const ::std::os::raw::c_char,
+        >,
+    pub(super) release: ::std::option::Option<unsafe extern "C" fn(arg1: *mut ffi::ArrowArrayStream)>,
+    pub(super) private_data: *mut ::std::os::raw::c_void,
 }
 
 #[rustler::nif(schedule = "DirtyCpu")]
