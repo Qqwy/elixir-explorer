@@ -284,8 +284,10 @@ pub fn df_sample_frac(
 
 /// NOTE: The '_ref' parameter is needed to prevent the BEAM GC from collecting the stream too soon.
 #[rustler::nif]
-fn df_experiment(stream_ptr: u64, _ref: rustler::Term) -> Result<String, ExplorerError> {
-    let stream_ptr = stream_ptr as *mut ffi::ArrowArrayStream;
+fn df_experiment(resource_ptr: u64, _ref: rustler::Term) -> Result<String, ExplorerError> {
+    let resource_ptr = resource_ptr as *mut*mut ffi::ArrowArrayStream; // <- This is equivalent to adbc's `*NifRes<ArrowArrayStream>`
+    let stream_ptr = unsafe { *resource_ptr };
+    unsafe {*resource_ptr  = std::ptr::null_mut()};
     match unsafe { stream_ptr.as_mut() } {
         None => Err(ExplorerError::Other("Incorrect stream pointer".into())),
         Some(stream_ref) => {
